@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boxplots verstehen</title>
+<style>
+  :root {
+    --bg: #e7e1d6;
+    --paper: #fbf7f0;
+    --ink: #1d1a16;
+    --muted: #6d655c;
+    --line: #ddd4c6;
+    --teal: #0f6a60;
+    --teal-deep: #0c4c46;
+    --teal-soft: #d7eee8;
+    --amber: #d36a1c;
+    --coral: #c33b2e;
+    --navy: #243044;
+    --shadow: 0 16px 40px rgba(60, 42, 20, 0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 10% -10%, #f6f1e6 0%, transparent 55%),
+      radial-gradient(900px 400px at 100% 0%, #e4efe9 0%, transparent 50%),
+      var(--bg);
+    font: 16px/1.5 "Segoe UI", "Helvetica Neue", sans-serif;
+  }
+
+  h1, h2, h3, .serif { font-family: Georgia, "Iowan Old Style", Palatino, serif; font-weight: 600; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 72px; }
+
+  header.top { margin-bottom: 22px; }
+  .eyebrow {
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 12px;
+    color: var(--teal-deep);
+    margin: 0 0 6px;
+  }
+  h1 { font-size: clamp(36px, 5vw, 56px); line-height: 0.95; margin: 0 0 10px; }
+  .lede { max-width: 62ch; margin: 0; color: var(--muted); font-size: 18px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .explain { position: sticky; top: 14px; padding: 18px 18px 16px; }
+  .kicker { margin: 0; color: var(--amber); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .explain h2 { margin: 4px 0 8px; font-size: 28px; line-height: 1.15; }
+  .explain p { margin: 0; }
+  #explain-body { color: var(--ink); }
+  .formula {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px dashed var(--line);
+    font-variant-numeric: tabular-nums;
+    color: var(--teal-deep);
+  }
+
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .block { padding: 14px; }
+  .block h3 { margin: 0 0 8px; font-size: 18px; }
+  .hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+  .stats { display: grid; gap: 6px; }
+  .stat {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 7px 10px;
+  }
+  .stat span { color: var(--muted); }
+  .stat strong { font-variant-numeric: tabular-nums; }
+  .stat.is-on { border-color: var(--amber); background: #fff6ec; }
+  .stat small { display: block; color: var(--muted); font-weight: 400; }
+
+  .presets, .toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+  .presets button, .ghost, .primary {
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 7px 12px;
+  }
+  .presets button[aria-pressed="true"] {
+    background: var(--teal);
+    color: #fff;
+    border-color: var(--teal);
+  }
+  .primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .ghost[disabled] { opacity: 0.45; cursor: not-allowed; }
+  .toggles label {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  textarea {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    padding: 10px;
+    background: #fff;
+    resize: vertical;
+    field-sizing: content;
+    min-height: 72px;
+  }
+  .row { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .error { color: var(--coral); margin: 8px 0 0; font-size: 14px; }
+
+  .stage { padding: 14px 14px 16px; }
+  .stage-head, .tour-bar, .legend {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .five { margin: 0; font-variant-numeric: tabular-nums; }
+  .five b { font-weight: 650; }
+  .legend { list-style: none; padding: 0; margin: 8px 0 0; gap: 14px; color: var(--muted); font-size: 13px; }
+  .legend li { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+  .swatch.pts { background: var(--navy); border-radius: 50%; }
+  .swatch.box { background: var(--teal-soft); border: 2px solid var(--teal); }
+  .swatch.med { background: var(--amber); height: 4px; }
+  .swatch.out { background: #fff; border: 2px solid var(--coral); border-radius: 50%; }
+
+  svg.plot, .klass svg { width: 100%; height: auto; display: block; font-family: "Segoe UI", "Helvetica Neue", sans-serif; }
+  svg.plot { touch-action: none; user-select: none; }
+  #plot .is-dim { opacity: 0.2; }
+  #plot .lab.is-dim { opacity: 0.45; }
+  #plot .is-hot { filter: drop-shadow(0 0 5px rgba(211, 106, 28, 0.45)); }
+  #plot .is-selected { stroke: var(--amber); stroke-width: 3px; }
+
+  .tour-bar { margin-top: 8px; }
+  .tour-bar p { margin: 0; flex: 1; min-width: 180px; }
+  .steps { display: flex; gap: 5px; }
+  .steps i {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: block;
+  }
+  .steps i.on { background: var(--amber); }
+
+  .notice {
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #fff4e8;
+    border: 1px solid #f0d2b4;
+  }
+
+  .chips-wrap { margin-top: 12px; }
+  .chips-wrap h3 { margin: 0 0 8px; font-size: 16px; font-family: "Segoe UI", sans-serif; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .chip.dim { opacity: 0.35; }
+  .chip.is-selected { border-color: var(--amber); background: #fff6ec; }
+  .chip.out { color: var(--coral); }
+
+  .how { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+  section { margin-top: 22px; }
+  .section-card { padding: 18px; }
+  .section-card h2 { margin: 0 0 6px; font-size: 30px; }
+  .classes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .klass {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 10px;
+  }
+  .klass.is-on { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15, 106, 96, 0.12); }
+  .klass h3 { margin: 0; font-size: 18px; }
+  .klass .sub { margin: 0 0 4px; color: var(--muted); font-size: 13px; min-height: 2.6em; }
+  .klass svg { width: 100%; height: auto; }
+  .mini-stats { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; color: var(--teal-deep); }
+  #compare-story { margin: 12px 0 0; min-height: 4.5em; }
+
+  .quiz { display: grid; gap: 14px; margin-top: 12px; }
+  fieldset {
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    padding: 12px;
+  }
+  legend { padding: 0 6px; font-family: Georgia, serif; }
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .choices button { border-radius: 999px; border: 1px solid var(--line); background: var(--paper); padding: 7px 12px; }
+  .choices button.good { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .choices button.bad { background: #fde8e6; border-color: var(--coral); }
+  .why { margin: 8px 0 0; }
+
+  .shares { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .shares div { background: #fff; border-radius: 10px; padding: 8px; border: 1px solid var(--line); }
+  .shares strong { display: block; font-variant-numeric: tabular-nums; }
+  .shares span { color: var(--muted); font-size: 12px; }
+
+  footer { margin-top: 18px; color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 900px) {
+    .layout, .classes { grid-template-columns: 1fr; }
+    .explain { position: static; }
+    .klass .sub { min-height: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    #plot .is-hot { filter: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Statistik zum Anfassen</p>
+    <h1>Boxplots verstehen</h1>
+    <p class="lede">Eine Box fasst eine ganze Messreihe in fünf Zahlen. Hier liegen die einzelnen Werte daneben, damit du siehst, was die Grafik behält — und was sie verschweigt.</p>
+  </header>
+
+  <div class="layout">
+    <div class="side">
+      <article class="card explain" aria-live="polite">
+        <p class="kicker" id="explain-kicker">Überblick</p>
+        <h2 id="explain-title">Fünf Zahlen, eine Form</h2>
+        <p id="explain-body">Zeig auf die Box, eine Antenne oder einen Punkt. Ziehe Punkte nach oben oder unten, klicke in die freie Fläche für einen neuen Wert, und lösche einen Punkt mit Rechtsklick oder der Entf-Taste.</p>
+        <p class="formula" id="formula" hidden></p>
+      </article>
+
+      <section class="card block">
+        <h3>Kennzahlen</h3>
+        <div class="stats" id="stats"></div>
+        <div class="shares" id="shares"></div>
+        <p class="hint">Anteile zählen Werte strikt unter der Grenze. Durch Bindungen und Interpolation sind es oft nicht exakt 25, 50 und 75&nbsp;%.</p>
+      </section>
+
+      <section class="card block">
+        <h3>Beispiele</h3>
+        <div class="presets" id="presets"></div>
+        <div class="row">
+          <button type="button" class="ghost" id="reroll">Neue Zufallszahlen</button>
+        </div>
+        <div class="toggles" style="margin-top:10px">
+          <label><input type="checkbox" id="opt-fence" checked> Zäune (1,5 × IQR)</label>
+          <label><input type="checkbox" id="opt-numbers"> Zahlen an den Punkten</label>
+          <label><input type="checkbox" id="opt-jitter" checked> Punkte versetzen</label>
+        </div>
+      </section>
+
+      <section class="card block">
+        <h3>Eigene Zahlen</h3>
+        <textarea id="custom" spellcheck="false" placeholder="2  4  5  5  6  7  8  9  9  10  12  22"></textarea>
+        <div class="row">
+          <button type="button" class="primary" id="apply">Zeichnen</button>
+        </div>
+        <p class="error" id="parse-error" hidden></p>
+        <p class="hint">Trenne Werte mit Leerzeichen oder Zeilenumbruch. Dezimalstellen mit Punkt oder Komma, zum Beispiel 3,5.</p>
+      </section>
+    </div>
+
+    <div>
+      <section class="card stage">
+        <div class="stage-head">
+          <p class="five" id="five"></p>
+        </div>
+        <ul class="legend">
+          <li><i class="swatch pts"></i> Messwert</li>
+          <li><i class="swatch box"></i> Box, mittlere 50&nbsp;%</li>
+          <li><i class="swatch med"></i> Median</li>
+          <li><i class="swatch out"></i> Ausreißer</li>
+        </ul>
+        <svg id="plot" class="plot" viewBox="0 0 760 540" role="img" aria-label="Interaktiver Boxplot"></svg>
+        <div class="tour-bar">
+          <button type="button" class="ghost" id="tour-prev" hidden>Zurück</button>
+          <p id="tour-label">Die Führung geht die Grafik Teil für Teil durch.</p>
+          <div class="steps" id="tour-dots" hidden></div>
+          <button type="button" class="primary" id="tour-next">Führung starten</button>
+        </div>
+        <p class="notice" id="notice" hidden></p>
+        <div class="chips-wrap">
+          <h3>Dieselben Werte, von klein nach groß</h3>
+          <div class="chips" id="chips"></div>
+        </div>
+        <p class="how">Ziehen ändert einen Wert. Klick in die freie Fläche fügt einen hinzu. Rechtsklick oder Entf löscht den gewählten Punkt. Ein Klick auf eine Kennzahl hält die Erklärung fest, Escape löst sie wieder.</p>
+      </section>
+
+      <section class="card section-card" id="vergleich">
+        <h2>Dieselbe Skala, drei Klassen</h2>
+        <p>Alle drei Diagramme gehen von 0 bis 100. So darfst du die Boxen direkt vergleichen: Lage, Breite und Schwänze.</p>
+        <div class="classes" id="classes"></div>
+        <p id="compare-story">Zeig auf eine Klasse.</p>
+      </section>
+
+      <section class="card section-card">
+        <h2>Kurz prüfen</h2>
+        <div class="quiz" id="quiz"></div>
+      </section>
+
+      <footer>
+        Tukey-Boxplot: Antennen enden beim letzten Wert innerhalb der Zäune, und die Zäune liegen 1,5 Interquartilsabstände außerhalb der Box. Quartile sind Perzentile mit linearer Interpolation. Die 1,5 ist eine Faustregel, kein Naturgesetz.
+      </footer>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const GEO = { w: 760, h: 540, padL: 56, padR: 176, padT: 26, padB: 34, boxX: 268, boxW: 96, pointX: 156, jitterW: 78 };
+  const TEXTBOOK = [2, 4, 5, 5, 6, 7, 8, 9, 9, 10, 12, 22];
+  const CLASSES = [
+    {
+      name: "Ahorn",
+      sub: "Eng und hoch",
+      values: [78, 80, 81, 82, 82, 83, 84, 84, 85, 86, 87, 88, 89]
+    },
+    {
+      name: "Birke",
+      sub: "Ähnliche Mitte, viel breitere Box",
+      values: [55, 64, 70, 72, 76, 82, 86, 88, 90, 94, 98, 100]
+    },
+    {
+      name: "Eiche",
+      sub: "Die meisten hoch, ein Schwanz nach unten",
+      values: [18, 40, 84, 88, 90, 91, 92, 93, 94, 95, 96, 97, 98]
+    }
+  ];
+  const PRESETS = [
+    { id: "textbook", label: "Kleine Liste", random: false },
+    { id: "sym", label: "Symmetrisch", random: true },
+    { id: "right", label: "Rechtsschief", random: true },
+    { id: "left", label: "Linksschief", random: true },
+    { id: "outlier", label: "Ausreißer", random: true },
+    { id: "bimodal", label: "Zwei Hügel", random: true }
+  ];
+  const STEPS = [
+    {
+      title: "Erst die Punkte",
+      keys: ["points"],
+      body: (s) => "Jeder Punkt ist ein Messwert, hier " + s.n + ". Der Boxplot daneben fasst dieselbe Wolke nur zusammen. Er erfindet keine neuen Zahlen."
+    },
+    {
+      title: "Der Median",
+      keys: ["median", "box"],
+      body: (s) => "Sortiert liegt der Median in der Mitte: " + fmt(s.median) + ". Die eine Hälfte der Werte ist kleiner, die andere größer. Die dicke Linie markiert ihn. Bei einer geraden Anzahl sitzt er oft zwischen zwei Punkten."
+    },
+    {
+      title: "Die Quartile",
+      keys: ["q1", "q3", "box"],
+      body: (s) => "Q1 = " + fmt(s.q1) + " lässt ungefähr das untere Viertel unter sich. Q3 = " + fmt(s.q3) + " lässt ungefähr das obere Viertel über sich. Die Box verbindet beide."
+    },
+    {
+      title: "Die Box",
+      keys: ["box", "iqr", "q1", "q3", "median"],
+      body: (s) => "Die Box reicht von Q1 bis Q3. Ihre Länge ist der Interquartilsabstand, " + fmt(s.iqr) + ". Darin liegen die mittleren 50 %. Einzelne extreme Werte rütteln diese Länge kaum."
+    },
+    {
+      title: "Die Antennen",
+      keys: ["whiskerLow", "whiskerHigh", "box"],
+      body: (s) => "Die Antennen laufen von der Box bis zum letzten Wert, der noch kein Ausreißer ist: unten " + fmt(s.whiskerLow) + ", oben " + fmt(s.whiskerHigh) + ". Das sind nicht automatisch Minimum und Maximum."
+    },
+    {
+      title: "Zäune und Ausreißer",
+      keys: ["fence", "outlier", "iqr", "box"],
+      body: (s) => {
+        const base = "Die gestrichelten Zäune liegen bei " + fmt(s.lowerFence) + " und " + fmt(s.upperFence) + ", also 1,5 Boxlängen außerhalb von Q1 und Q3.";
+        if (!s.outliers.length) return base + " Gerade liegt kein Wert draußen. Wähle „Ausreißer“ oder ziehe einen Punkt weit weg.";
+        const word = s.outliers.length === 1 ? "Ein Wert liegt" : s.outliers.length + " Werte liegen";
+        return base + " " + word + " außerhalb: " + listFmt(s.outliers) + ".";
+      }
+    },
+    {
+      all: true,
+      title: "Die Form lesen",
+      keys: [],
+      body: (s) => shapeStory(s)
+    }
+  ];
+
+  const state = {
+    values: TEXTBOOK.slice(),
+    preset: "textbook",
+    seed: 1000,
+    selected: null,
+    locked: null,
+    hoverKeys: null,
+    hoverIndex: null,
+    tour: null,
+    showFences: true,
+    showNumbers: false,
+    jitter: true,
+    scaleOverride: null,
+    drag: null
+  };
+
+  const plot = document.getElementById("plot");
+  const chips = document.getElementById("chips");
+  let hit = { points: [], zones: [], scale: null, geo: GEO };
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function gauss(rng) {
+    let u = rng();
+    const v = rng();
+    if (u < 1e-9) u = 1e-9;
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function round1(v) {
+    return Math.round(v * 10) / 10;
+  }
+
+  function near(a, b) {
+    return Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+  }
+
+  function fmt(v) {
+    if (v == null || Number.isNaN(v)) return "–";
+    const r = Math.round(v * 100) / 100;
+    return r.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+  }
+
+  function listFmt(arr) {
+    const shown = arr.slice(0, 5).map(fmt);
+    if (arr.length > 5) shown.push("+" + (arr.length - 5));
+    return shown.join(", ");
+  }
+
+  function quantile(sorted, p) {
+    if (!sorted.length) return NaN;
+    if (sorted.length === 1) return sorted[0];
+    const pos = (sorted.length - 1) * p;
+    const lo = Math.floor(pos);
+    const hi = Math.ceil(pos);
+    const f = pos - lo;
+    return sorted[lo] * (1 - f) + sorted[hi] * f;
+  }
+
+  function compute(values) {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const n = sorted.length;
+    const q1 = quantile(sorted, 0.25);
+    const median = quantile(sorted, 0.5);
+    const q3 = quantile(sorted, 0.75);
+    const iqr = q3 - q1;
+    const lowerFence = q1 - 1.5 * iqr;
+    const upperFence = q3 + 1.5 * iqr;
+    let whiskerLow = null;
+    let whiskerHigh = null;
+    const outliers = [];
+    sorted.forEach((v) => {
+      if (v < lowerFence - 1e-9 || v > upperFence + 1e-9) outliers.push(v);
+      else {
+        if (whiskerLow == null) whiskerLow = v;
+        whiskerHigh = v;
+      }
+    });
+    return {
+      sorted, n,
+      min: n ? sorted[0] : NaN,
+      max: n ? sorted[n - 1] : NaN,
+      q1, median, q3, iqr, lowerFence, upperFence, whiskerLow, whiskerHigh, outliers
+    };
+  }
+
+  function skewKind(s) {
+    if (!(s.iqr > 0)) return "symmetrisch";
+    const rel = ((s.q3 - s.median) - (s.median - s.q1)) / s.iqr;
+    if (Math.abs(rel) < 0.12) return "symmetrisch";
+    return rel > 0 ? "rechtsschief" : "linksschief";
+  }
+
+  function midGap(s) {
+    if (s.n < 6) return 0;
+    const mid = Math.floor(s.n / 2);
+    return s.sorted[mid] - s.sorted[mid - 1];
+  }
+
+  function shapeStory(s) {
+    if (s.n < 4) return "Mit so wenigen Werten ist die Box noch wacklig. Ein paar Punkte mehr, und die Quartile beruhigen sich.";
+    const parts = [];
+    const lowOut = s.outliers.filter((v) => v < s.lowerFence);
+    const highOut = s.outliers.filter((v) => v > s.upperFence);
+    if (s.outliers.length) {
+      const bits = [];
+      if (highOut.length) bits.push(highOut.length === 1 ? "ein großer Wert" : highOut.length + " große Werte");
+      if (lowOut.length) bits.push(lowOut.length === 1 ? "ein kleiner Wert" : lowOut.length + " kleine Werte");
+      const verb = s.outliers.length === 1 ? "Jenseits des Zauns liegt " : "Jenseits der Zäune liegen ";
+      parts.push(verb + bits.join(" und ") + ": " + listFmt(s.outliers) + ". Die Antennen enden davor, bei " + fmt(s.whiskerLow) + " und " + fmt(s.whiskerHigh) + ".");
+    } else {
+      parts.push("Kein Wert liegt jenseits der Zäune. Minimum und Maximum sind hier gleichzeitig die Enden der Antennen.");
+    }
+    const kind = skewKind(s);
+    if (kind === "symmetrisch") {
+      parts.push("In der Box sitzt der Median nahe der Mitte zwischen Q1 und Q3.");
+    } else if (kind === "rechtsschief") {
+      parts.push("In der Box liegt der Median näher an Q1. Die obere Hälfte der mittleren 50 % ist länger.");
+    } else {
+      parts.push("In der Box liegt der Median näher an Q3. Die untere Hälfte der mittleren 50 % ist länger.");
+    }
+    const contradicts = (highOut.length && !lowOut.length && kind === "linksschief") || (lowOut.length && !highOut.length && kind === "rechtsschief");
+    if (contradicts) {
+      parts.push("Box und Ausreißer zeigen hier in verschiedene Richtungen. Schau dir deshalb beide an, nicht nur die Schiefe der Box.");
+    } else if (kind === "rechtsschief") {
+      parts.push("Das passt zu einer rechtsschiefen Verteilung: die großen Werte ziehen einen Schwanz nach oben.");
+    } else if (kind === "linksschief") {
+      parts.push("Das passt zu einer linksschiefen Verteilung: die kleinen Werte ziehen einen Schwanz nach unten.");
+    }
+    const wLow = s.q1 - s.whiskerLow;
+    const wHigh = s.whiskerHigh - s.q3;
+    if (!s.outliers.length && s.iqr > 0 && Math.max(wLow, wHigh) > Math.min(wLow, wHigh) * 1.8 && Math.max(wLow, wHigh) > s.iqr * 0.35) {
+      parts.push(wHigh > wLow ? "Auch die obere Antenne ist deutlich länger." : "Auch die untere Antenne ist deutlich länger.");
+    }
+    if (s.iqr > 0 && midGap(s) > s.iqr * 0.45) {
+      parts.push("Zwischen den mittleren Punkten klafft eine Lücke. Die Punkte ballen sich an zwei Stellen, die Box mittelt darüber hinweg. Zwei Hügel sieht man ihr allein nicht an.");
+    }
+    return parts.join(" ");
+  }
+
+  function regionOf(v, s) {
+    if (v < s.lowerFence - 1e-9 || v > s.upperFence + 1e-9) return "outlier";
+    if (v < s.q1) return "pointsWhiskerLow";
+    if (v < s.median) return "pointsBoxLow";
+    if (v <= s.q3) return "pointsBoxHigh";
+    return "pointsWhiskerHigh";
+  }
+
+  function sample(kind, seed) {
+    const rng = mulberry32(seed);
+    const n = 28;
+    const out = [];
+    if (kind === "sym") {
+      for (let i = 0; i < n; i++) out.push(round1(50 + gauss(rng) * 9));
+    } else if (kind === "right") {
+      for (let i = 0; i < n; i++) out.push(round1(Math.exp(3.05 + gauss(rng) * 0.48)));
+    } else if (kind === "left") {
+      for (let i = 0; i < n; i++) out.push(round1(100 - Math.exp(3.05 + gauss(rng) * 0.48)));
+    } else if (kind === "outlier") {
+      for (let i = 0; i < n - 3; i++) out.push(round1(48 + gauss(rng) * 6));
+      out.push(4, 9, 96);
+    } else if (kind === "bimodal") {
+      for (let i = 0; i < n / 2; i++) out.push(round1(28 + gauss(rng) * 3));
+      for (let i = 0; i < n / 2; i++) out.push(round1(76 + gauss(rng) * 3));
+    }
+    return out;
+  }
+
+  function niceScale(values) {
+    let lo = Math.min.apply(null, values);
+    let hi = Math.max.apply(null, values);
+    if (!Number.isFinite(lo)) return { lo: 0, hi: 1 };
+    if (lo === hi) { lo -= 1; hi += 1; }
+    const pad = (hi - lo) * 0.14;
+    return { lo: lo - pad, hi: hi + pad };
+  }
+
+  function ticksOf(lo, hi) {
+    const span = hi - lo;
+    if (!(span > 0)) return [lo];
+    const raw = span / 6;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / mag;
+    const step = (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * mag;
+    const start = Math.ceil((lo - step * 1e-6) / step) * step;
+    const out = [];
+    for (let v = start; v <= hi + step * 0.001; v += step) {
+      out.push(Math.round(v * 1e6) / 1e6);
+      if (out.length > 10) break;
+    }
+    return out;
+  }
+
+  function yOf(v, scale, geo) {
+    const t = (v - scale.lo) / (scale.hi - scale.lo);
+    return geo.padT + (1 - t) * (geo.h - geo.padT - geo.padB);
+  }
+
+  function vOf(y, scale, geo) {
+    const inner = geo.h - geo.padT - geo.padB;
+    const t = 1 - (y - geo.padT) / inner;
+    return scale.lo + t * (scale.hi - scale.lo);
+  }
+
+  function el(name, attrs) {
+    const node = document.createElementNS(SVG_NS, name);
+    Object.keys(attrs).forEach((k) => node.setAttribute(k, attrs[k]));
+    return node;
+  }
+
+  function spreadLabels(items, geo) {
+    const rows = items.slice().sort((a, b) => a.y - b.y);
+    const gap = 24;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].y < rows[i - 1].y + gap) rows[i].y = rows[i - 1].y + gap;
+    }
+    const bottom = geo.h - 8;
+    const top = 12;
+    if (rows.length && rows[rows.length - 1].y > bottom) {
+      const shift = rows[rows.length - 1].y - bottom;
+      rows.forEach((r) => { r.y -= shift; });
+    }
+    if (rows.length && rows[0].y < top) {
+      const shift = top - rows[0].y;
+      rows.forEach((r) => { r.y += shift; });
+    }
+    return rows;
+  }
+
+  function drawPlot(svg, values, opts) {
+    const geo = opts.geo;
+    const s = compute(values);
+    let scale;
+    if (opts.scale) scale = opts.scale;
+    else if (opts.domain) scale = { lo: opts.domain[0], hi: opts.domain[1] };
+    else {
+      const base = values.length ? values : [0, 1];
+      const span = values.length ? Math.max(s.max - s.min, 1) : 1;
+      const nearbyFences = opts.showFences && s.n >= 2
+        ? [s.lowerFence, s.upperFence].filter((v) => v >= s.min - span * 0.5 && v <= s.max + span * 0.5)
+        : [];
+      scale = niceScale(base.concat(nearbyFences));
+    }
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    if (!values.length) {
+      const t = el("text", { x: geo.w / 2, y: geo.h / 2, "text-anchor": "middle", fill: "#6d655c", "font-size": 16 });
+      t.textContent = "Klick ins Diagramm, um einen Wert zu setzen.";
+      svg.appendChild(t);
+      return { points: [], zones: [], scale, geo, stats: s };
+    }
+
+    const y = (v) => yOf(v, scale, geo);
+    svg.appendChild(el("rect", { x: 0, y: 0, width: geo.w, height: geo.h, fill: "#fbf7f0" }));
+
+    ticksOf(scale.lo, scale.hi).forEach((v) => {
+      const yy = y(v);
+      if (yy < geo.padT - 2 || yy > geo.h - geo.padB + 2) return;
+      svg.appendChild(el("line", { x1: geo.padL, x2: geo.boxX + geo.boxW + (opts.labels ? 24 : 8), y1: yy, y2: yy, stroke: "#e6dfd3", "stroke-width": 1 }));
+      const label = el("text", { x: geo.padL - 8, y: yy + 4, "text-anchor": "end", fill: "#6d655c", "font-size": opts.compact ? 11 : 13 });
+      label.textContent = fmt(v);
+      svg.appendChild(label);
+    });
+
+    const zones = [];
+    if (opts.showFences && s.n >= 2) {
+      [s.lowerFence, s.upperFence].forEach((fence, i) => {
+        const yy = y(fence);
+        if (yy < geo.padT || yy > geo.h - geo.padB) return;
+        const line = el("line", {
+          class: "geom",
+          "data-keys": "fence",
+          x1: geo.padL, x2: geo.boxX + geo.boxW + 8, y1: yy, y2: yy,
+          stroke: "#c33b2e", "stroke-width": 1.5, "stroke-dasharray": "5 5"
+        });
+        svg.appendChild(line);
+        if (opts.labels) {
+          const tx = el("text", { class: "lab", "data-keys": "fence outlier", x: geo.padL + 6, y: yy - 6, fill: "#c33b2e", "font-size": 12 });
+          tx.textContent = i === 0 ? "unterer Zaun" : "oberer Zaun";
+          svg.appendChild(tx);
+        }
+        zones.push({
+          keys: ["fence", "outlier"],
+          x: geo.padL,
+          y: yy - 8,
+          w: geo.boxX + geo.boxW - geo.padL,
+          h: 16
+        });
+      });
+    }
+
+    const xMid = geo.boxX + geo.boxW / 2;
+    const y1 = y(s.whiskerLow);
+    const yQ1 = y(s.q1);
+    const yMed = y(s.median);
+    const yQ3 = y(s.q3);
+    const y2 = y(s.whiskerHigh);
+    const cap = Math.min(28, geo.boxW * 0.45);
+
+    function whisker(yEnd, yBox, key) {
+      svg.appendChild(el("line", {
+        class: "geom", "data-keys": key,
+        x1: xMid, x2: xMid, y1: yBox, y2: yEnd,
+        stroke: "#243044", "stroke-width": 2
+      }));
+      svg.appendChild(el("line", {
+        class: "geom", "data-keys": key,
+        x1: xMid - cap / 2, x2: xMid + cap / 2, y1: yEnd, y2: yEnd,
+        stroke: "#243044", "stroke-width": 2
+      }));
+    }
+    if (s.whiskerLow != null) {
+      whisker(y1, yQ1, "whiskerLow");
+      whisker(y2, yQ3, "whiskerHigh");
+      zones.push({ keys: ["whiskerLow"], x: xMid - 18, y: Math.min(y1, yQ1), w: 36, h: Math.max(12, Math.abs(yQ1 - y1)) });
+      zones.push({ keys: ["whiskerHigh"], x: xMid - 18, y: Math.min(y2, yQ3), w: 36, h: Math.max(12, Math.abs(yQ3 - y2)) });
+    }
+
+    svg.appendChild(el("rect", {
+      class: "geom", "data-keys": "box iqr q1 q3 median",
+      x: geo.boxX, y: Math.min(yQ1, yQ3), width: geo.boxW, height: Math.max(2, Math.abs(yQ1 - yQ3)),
+      fill: "#d7eee8", stroke: "#0f6a60", "stroke-width": 2, rx: 2
+    }));
+    zones.push({ keys: ["box", "iqr", "q1", "median"], x: geo.boxX, y: Math.min(yMed, yQ1), w: geo.boxW, h: Math.max(10, Math.abs(yQ1 - yMed)) });
+    zones.push({ keys: ["box", "iqr", "q3", "median"], x: geo.boxX, y: Math.min(yMed, yQ3), w: geo.boxW, h: Math.max(10, Math.abs(yQ3 - yMed)) });
+
+    svg.appendChild(el("line", {
+      class: "geom", "data-keys": "median box",
+      x1: geo.boxX - 6, x2: geo.boxX + geo.boxW + 6, y1: yMed, y2: yMed,
+      stroke: "#d36a1c", "stroke-width": 4
+    }));
+    zones.push({ keys: ["median", "box"], x: geo.boxX - 6, y: yMed - 8, w: geo.boxW + 12, h: 16 });
+
+    if (opts.labels && s.iqr > 0) {
+      const bx = geo.boxX + geo.boxW + 22;
+      svg.appendChild(el("line", { class: "geom", "data-keys": "iqr box", x1: bx, x2: bx, y1: yQ1, y2: yQ3, stroke: "#0f6a60", "stroke-width": 2 }));
+      svg.appendChild(el("line", { class: "geom", "data-keys": "iqr box", x1: bx - 6, x2: bx + 6, y1: yQ1, y2: yQ1, stroke: "#0f6a60", "stroke-width": 2 }));
+      svg.appendChild(el("line", { class: "geom", "data-keys": "iqr box", x1: bx - 6, x2: bx + 6, y1: yQ3, y2: yQ3, stroke: "#0f6a60", "stroke-width": 2 }));
+      const iq = el("text", { class: "lab", "data-keys": "iqr box", x: bx + 10, y: (yQ1 + yQ3) / 2 + 4, fill: "#0c4c46", "font-size": 13 });
+      iq.textContent = "IQR " + fmt(s.iqr);
+      svg.appendChild(iq);
+    }
+
+    const points = [];
+    values.forEach((v, index) => {
+      const region = regionOf(v, s);
+      const bucket = Math.round(y(v) / 8);
+      const slot = opts.jitter ? ((index + bucket) % 5) - 2 : 0;
+      const px = geo.pointX + slot * (geo.jitterW / 4);
+      const py = y(v);
+      points.push({ index, x: px, y: py, v });
+      const keys = "points " + region + (region === "outlier" ? " outlier" : "");
+      const outlier = region === "outlier";
+      svg.appendChild(el("circle", {
+        "data-keys": keys,
+        "data-index": String(index),
+        cx: px, cy: py, r: opts.compact ? 4.5 : 6,
+        fill: outlier ? "#fbf7f0" : (region === "pointsBoxLow" || region === "pointsBoxHigh" ? "#0f6a60" : "#243044"),
+        stroke: outlier ? "#c33b2e" : "#fbf7f0",
+        "stroke-width": outlier ? 2 : 1
+      }));
+      const showText = opts.showNumbers || index === opts.selected || index === opts.hoverIndex;
+      if (showText && !opts.compact && values.length <= 40) {
+        const tx = el("text", {
+          "data-keys": keys, "data-index": String(index),
+          x: px - 12, y: py + 4, "text-anchor": "end", fill: "#1d1a16", "font-size": 12
+        });
+        tx.textContent = fmt(v);
+        svg.appendChild(tx);
+      }
+    });
+
+    if (opts.labels) {
+      const raw = [
+        { anchorY: y1, text: near(s.min, s.whiskerLow) ? "Minimum " + fmt(s.min) : "Antenne " + fmt(s.whiskerLow), keys: "whiskerLow" },
+        { anchorY: yQ1, text: "Q1 " + fmt(s.q1), keys: "q1 box" },
+        { anchorY: yMed, text: "Median " + fmt(s.median), keys: "median" },
+        { anchorY: yQ3, text: "Q3 " + fmt(s.q3), keys: "q3 box" },
+        { anchorY: y2, text: near(s.max, s.whiskerHigh) ? "Maximum " + fmt(s.max) : "Antenne " + fmt(s.whiskerHigh), keys: "whiskerHigh" }
+      ];
+      if (!near(s.min, s.whiskerLow)) raw.push({ anchorY: y(s.min), text: "Minimum " + fmt(s.min), keys: "min outlier" });
+      if (!near(s.max, s.whiskerHigh)) raw.push({ anchorY: y(s.max), text: "Maximum " + fmt(s.max), keys: "max outlier" });
+      const placed = spreadLabels(raw.map((r) => ({ y: r.anchorY, anchorY: r.anchorY, text: r.text, keys: r.keys })), geo);
+      placed.forEach((r) => {
+        const lx = geo.boxX + geo.boxW + 108;
+        if (Math.abs(r.y - r.anchorY) > 2) {
+          svg.appendChild(el("line", {
+            class: "lab", "data-keys": r.keys,
+            x1: geo.boxX + geo.boxW + 8, y1: r.anchorY, x2: lx - 6, y2: r.y,
+            stroke: "#cfc6b8"
+          }));
+        }
+        const fill = r.keys.indexOf("median") >= 0 ? "#d36a1c" : (r.keys.indexOf("outlier") >= 0 ? "#c33b2e" : "#1d1a16");
+        const tx = el("text", { class: "lab", "data-keys": r.keys, x: lx, y: r.y + 4, fill: fill, "font-size": 14 });
+        tx.textContent = r.text;
+        svg.appendChild(tx);
+      });
+    }
+
+    return { points, zones, scale, geo, stats: s };
+  }
+
+  function activeKeys() {
+    if (state.locked) return state.locked;
+    if (state.hoverKeys) return state.hoverKeys;
+    if (state.tour != null && !STEPS[state.tour].all) return STEPS[state.tour].keys;
+    return null;
+  }
+
+  function pointExplain(v, s) {
+    return { kicker: "Einzelner Wert", title: fmt(v), body: pointStory(v, s), formula: "" };
+  }
+
+  function explainFor(s) {
+    if (state.locked && state.locked.indexOf("points") >= 0 && state.selected != null) {
+      return pointExplain(state.values[state.selected], s);
+    }
+    if (state.tour != null && !state.locked && !state.hoverKeys) {
+      const step = STEPS[state.tour];
+      return { kicker: "Führung · " + (state.tour + 1) + " von " + STEPS.length, title: step.title, body: step.body(s), formula: formulaFor(step.keys, s) };
+    }
+    if (state.hoverIndex != null && !state.locked) {
+      return pointExplain(state.values[state.hoverIndex], s);
+    }
+    const keys = state.locked || state.hoverKeys || (state.tour != null ? STEPS[state.tour].keys : null);
+    if (!keys) {
+      return {
+        kicker: "Überblick",
+        title: "Fünf Zahlen, eine Form",
+        body: "Zeig auf einen Teil oder zieh einen Punkt. " + shapeStory(s),
+        formula: "IQR = Q3 − Q1 = " + fmt(s.iqr) + " · Zäune bei " + fmt(s.lowerFence) + " und " + fmt(s.upperFence)
+      };
+    }
+    return textForKeys(keys, s);
+  }
+
+  function formulaFor(keys, s) {
+    if (keys.indexOf("fence") >= 0 || keys.indexOf("outlier") >= 0) {
+      return "Unterer Zaun = Q1 − 1,5 × IQR = " + fmt(s.lowerFence) + " · oberer Zaun = " + fmt(s.upperFence);
+    }
+    if (keys.indexOf("iqr") >= 0) return "IQR = " + fmt(s.q3) + " − " + fmt(s.q1) + " = " + fmt(s.iqr);
+    return "";
+  }
+
+  function pointStory(v, s) {
+    const region = regionOf(v, s);
+    if (region === "outlier") return fmt(v) + " liegt außerhalb der Zäune. Im Boxplot bleibt so ein Wert ein eigener Punkt und verlängert die Antenne nicht.";
+    if (region === "pointsWhiskerLow") return fmt(v) + " sitzt an der unteren Antenne: klein, aber noch innerhalb des Zauns. Solche Werte zeigen, wie weit die Reihe nach unten reicht.";
+    if (region === "pointsBoxLow") return fmt(v) + " liegt in der unteren Hälfte der Box, zwischen Q1 und dem Median. Er gehört zu den mittleren 50 %.";
+    if (region === "pointsBoxHigh") return fmt(v) + " liegt in der oberen Hälfte der Box, zwischen Median und Q3. Er gehört zu den mittleren 50 %.";
+    return fmt(v) + " sitzt an der oberen Antenne: groß, aber noch kein Ausreißer.";
+  }
+
+  function textForKeys(keys, s) {
+    const has = (k) => keys.indexOf(k) >= 0;
+    if (has("median") && !has("iqr") && !has("q1")) {
+      return { kicker: "Mitte", title: "Median " + fmt(s.median), body: STEPS[1].body(s), formula: "" };
+    }
+    if (has("fence") || (has("outlier") && !has("points"))) {
+      return { kicker: "Faustregel", title: "1,5 × IQR", body: STEPS[5].body(s), formula: formulaFor(["fence"], s) };
+    }
+    if (has("iqr") || (has("box") && has("q1") && has("q3"))) {
+      return { kicker: "Mittlere Hälfte", title: "Die Box", body: STEPS[3].body(s), formula: formulaFor(["iqr"], s) };
+    }
+    if (has("q1") && !has("q3")) {
+      return {
+        kicker: "Unteres Viertel",
+        title: "Q1 " + fmt(s.q1),
+        body: "Q1 ist das untere Quartil. Etwa ein Viertel der Werte liegt darunter, drei Viertel darüber. Zusammen mit Q3 bildet es den Boden der Box.",
+        formula: ""
+      };
+    }
+    if (has("q3") && !has("q1")) {
+      return {
+        kicker: "Oberes Viertel",
+        title: "Q3 " + fmt(s.q3),
+        body: "Q3 ist das obere Quartil. Etwa drei Viertel der Werte liegen darunter, ein Viertel darüber. Es ist der Deckel der Box.",
+        formula: ""
+      };
+    }
+    if (has("q1") || has("q3")) return { kicker: "Viertel", title: "Q1 und Q3", body: STEPS[2].body(s), formula: "" };
+    if (has("whiskerLow") || has("whiskerHigh") || has("min") || has("max")) {
+      return { kicker: "Reichweite ohne Ausreißer", title: "Die Antennen", body: STEPS[4].body(s), formula: "" };
+    }
+    if (has("points")) return { kicker: "Rohdaten", title: s.n + " Werte", body: STEPS[0].body(s), formula: "" };
+    return { kicker: "Überblick", title: "Fünf Zahlen, eine Form", body: shapeStory(s), formula: "" };
+  }
+
+  function paint() {
+    const s = compute(state.values);
+    const info = explainFor(s);
+    document.getElementById("explain-kicker").textContent = info.kicker;
+    document.getElementById("explain-title").textContent = info.title;
+    document.getElementById("explain-body").textContent = info.body;
+    const formula = document.getElementById("formula");
+    formula.hidden = !info.formula;
+    formula.textContent = info.formula || "";
+
+    const active = activeKeys();
+    document.querySelectorAll("#plot [data-keys]").forEach((node) => {
+      const keys = node.getAttribute("data-keys").split(" ");
+      const on = !active || keys.some((k) => active.indexOf(k) >= 0);
+      node.classList.toggle("is-dim", !!active && !on);
+      node.classList.toggle("is-hot", !!active && on);
+      if (node.dataset.index != null) node.classList.toggle("is-selected", Number(node.dataset.index) === state.selected);
+    });
+    chips.querySelectorAll(".chip").forEach((node) => {
+      const keys = node.dataset.keys.split(" ");
+      const on = !active || keys.some((k) => active.indexOf(k) >= 0);
+      node.classList.toggle("dim", !!active && !on);
+      node.classList.toggle("is-selected", Number(node.dataset.index) === state.selected);
+    });
+    document.querySelectorAll("#stats .stat").forEach((node) => {
+      node.classList.toggle("is-on", !!active && active.indexOf(node.dataset.part) >= 0);
+    });
+
+    const tourOn = state.tour != null;
+    document.getElementById("tour-prev").hidden = !tourOn;
+    document.getElementById("tour-dots").hidden = !tourOn;
+    document.getElementById("tour-next").textContent = !tourOn ? "Führung starten" : (state.tour === STEPS.length - 1 ? "Führung beenden" : "Weiter");
+    document.getElementById("tour-label").textContent = tourOn
+      ? (state.tour + 1) + " / " + STEPS.length + " · " + STEPS[state.tour].title
+      : "Die Führung geht die Grafik Teil für Teil durch.";
+    document.querySelectorAll("#tour-dots i").forEach((dot, i) => dot.classList.toggle("on", i === state.tour));
+    document.getElementById("reroll").disabled = !(PRESETS.find((p) => p.id === state.preset) || {}).random;
+    document.querySelectorAll("#presets button").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.preset === state.preset));
+    });
+
+    const gap = s.n >= 6 && s.iqr > 0 && midGap(s) > s.iqr * 0.45;
+    const notice = document.getElementById("notice");
+    notice.hidden = !gap;
+    if (gap) notice.textContent = "Zwei Häufungen: Die Punkte bilden zwei Gruppen, der Median liegt in der Lücke. Der Boxplot sieht trotzdem wie eine gewöhnliche, breite Box aus. Deshalb lohnt der Blick auf die Punkte.";
+  }
+
+  function statButton(part, label, value, extra) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "stat";
+    btn.dataset.part = part;
+    const span = document.createElement("span");
+    span.textContent = label;
+    if (extra) {
+      const small = document.createElement("small");
+      small.textContent = extra;
+      span.appendChild(small);
+    }
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    btn.append(span, strong);
+    return btn;
+  }
+
+  function build() {
+    const opts = {
+      geo: GEO,
+      showFences: state.showFences,
+      showNumbers: state.showNumbers,
+      jitter: state.jitter,
+      labels: true,
+      selected: state.selected,
+      hoverIndex: state.hoverIndex,
+      scale: state.scaleOverride
+    };
+    hit = drawPlot(plot, state.values, opts);
+    const s = hit.stats;
+
+    const five = document.getElementById("five");
+    five.textContent = "";
+    if (s.n) {
+      five.innerHTML = "Minimum <b>" + fmt(s.min) + "</b> · Q1 <b>" + fmt(s.q1) + "</b> · Median <b>" + fmt(s.median) + "</b> · Q3 <b>" + fmt(s.q3) + "</b> · Maximum <b>" + fmt(s.max) + "</b>";
+    }
+
+    const stats = document.getElementById("stats");
+    stats.textContent = "";
+    const sameLow = s.n && near(s.min, s.whiskerLow);
+    const sameHigh = s.n && near(s.max, s.whiskerHigh);
+    [
+      ["min", "Minimum", fmt(s.min), sameLow ? "endet mit der Antenne" : "kleiner als die Antenne"],
+      ["whiskerLow", "Untere Antenne", fmt(s.whiskerLow), "letzter Wert im Zaun"],
+      ["q1", "Unteres Quartil Q1", fmt(s.q1), ""],
+      ["median", "Median", fmt(s.median), ""],
+      ["q3", "Oberes Quartil Q3", fmt(s.q3), ""],
+      ["whiskerHigh", "Obere Antenne", fmt(s.whiskerHigh), "letzter Wert im Zaun"],
+      ["max", "Maximum", fmt(s.max), sameHigh ? "endet mit der Antenne" : "größer als die Antenne"],
+      ["iqr", "IQR", fmt(s.iqr), "Q3 minus Q1"],
+      ["outlier", "Ausreißer", String(s.outliers.length), s.outliers.length ? listFmt(s.outliers) : "keine"]
+    ].forEach((row) => stats.appendChild(statButton(row[0], row[1], row[2], row[3])));
+
+    const shares = document.getElementById("shares");
+    const below = (p) => s.sorted.filter((v) => v < p).length;
+    shares.innerHTML = "";
+    [
+      ["unter Q1", s.n ? below(s.q1) : 0],
+      ["unter dem Median", s.n ? below(s.median) : 0],
+      ["unter Q3", s.n ? below(s.q3) : 0]
+    ].forEach((row) => {
+      const div = document.createElement("div");
+      div.innerHTML = "<strong>" + row[1] + " / " + s.n + "</strong><span>" + row[0] + "</span>";
+      shares.appendChild(div);
+    });
+
+    chips.textContent = "";
+    const order = state.values.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v || a.i - b.i);
+    order.forEach((item) => {
+      const region = s.n ? regionOf(item.v, s) : "points";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "chip" + (region === "outlier" ? " out" : "");
+      btn.dataset.index = String(item.i);
+      btn.dataset.keys = "points " + region + (region === "outlier" ? " outlier" : "");
+      btn.textContent = fmt(item.v);
+      chips.appendChild(btn);
+    });
+
+    paint();
+  }
+
+  function svgPoint(event) {
+    const pt = plot.createSVGPoint();
+    pt.x = event.clientX;
+    pt.y = event.clientY;
+    const ctm = plot.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  }
+
+  function pickPoint(x, y) {
+    let best = -1;
+    let bestD = 16;
+    hit.points.forEach((p) => {
+      const d = Math.hypot(p.x - x, p.y - y);
+      if (d < bestD) { bestD = d; best = p.index; }
+    });
+    return best;
+  }
+
+  function pickZone(x, y) {
+    for (let i = hit.zones.length - 1; i >= 0; i--) {
+      const z = hit.zones[i];
+      if (x >= z.x && x <= z.x + z.w && y >= z.y && y <= z.y + z.h) return z.keys;
+    }
+    return null;
+  }
+
+  function setHover(keys, index) {
+    const sig = (keys ? keys.join(",") : "") + "|" + index;
+    if (sig === state.hoverSig) return;
+    state.hoverSig = sig;
+    state.hoverKeys = keys;
+    state.hoverIndex = index;
+    paint();
+  }
+
+  function loadValues(values, preset) {
+    state.values = values.slice(0, 120);
+    state.preset = preset;
+    state.selected = null;
+    state.locked = null;
+    state.hoverKeys = null;
+    state.hoverIndex = null;
+    state.hoverSig = "";
+    state.scaleOverride = null;
+    build();
+  }
+
+  function removeAt(index) {
+    state.values.splice(index, 1);
+    state.selected = null;
+    state.preset = "custom";
+    build();
+  }
+
+  function selfCheck() {
+    const a = compute([1, 2, 3, 4, 5, 6, 7, 8]);
+    const b = compute(TEXTBOOK);
+    return Math.abs(a.q1 - 2.75) < 1e-9 && Math.abs(a.median - 4.5) < 1e-9 && Math.abs(a.q3 - 6.25) < 1e-9 &&
+      a.whiskerLow === 1 && a.whiskerHigh === 8 && a.outliers.length === 0 &&
+      Math.abs(b.q1 - 5) < 1e-9 && Math.abs(b.median - 7.5) < 1e-9 && Math.abs(b.q3 - 9.25) < 1e-9 &&
+      b.whiskerHigh === 12 && b.outliers.length === 1 && b.outliers[0] === 22;
+  }
+
+  function setupPresets() {
+    const box = document.getElementById("presets");
+    PRESETS.forEach((p) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = p.label;
+      btn.dataset.preset = p.id;
+      btn.addEventListener("click", () => {
+        state.seed += 1;
+        const values = p.id === "textbook" ? TEXTBOOK.slice() : sample(p.id, state.seed);
+        loadValues(values, p.id);
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  function setupTour() {
+    const dots = document.getElementById("tour-dots");
+    STEPS.forEach(() => dots.appendChild(document.createElement("i")));
+    document.getElementById("tour-next").addEventListener("click", () => {
+      if (state.tour == null) state.tour = 0;
+      else if (state.tour >= STEPS.length - 1) state.tour = null;
+      else state.tour += 1;
+      state.locked = null;
+      state.hoverKeys = null;
+      state.hoverIndex = null;
+      state.hoverSig = "";
+      if (state.tour != null && STEPS[state.tour].keys.indexOf("fence") >= 0 && !state.showFences) {
+        state.showFences = true;
+        document.getElementById("opt-fence").checked = true;
+      }
+      build();
+    });
+    document.getElementById("tour-prev").addEventListener("click", () => {
+      if (state.tour > 0) state.tour -= 1;
+      state.hoverSig = "";
+      build();
+    });
+  }
+
+  function setupQuiz() {
+    const questions = [
+      {
+        q: "Was umfasst die Box?",
+        choices: [["Alle Werte von Minimum bis Maximum", false], ["Die mittleren 50 %, von Q1 bis Q3", true], ["Nur die Ausreißer", false]],
+        why: "Die Box läuft von Q1 bis Q3. Das ist die mittlere Hälfte der sortierten Werte. Minimum und Maximum können viel weiter außen liegen."
+      },
+      {
+        q: "Was ist die dicke Linie in der Box?",
+        choices: [["Der Mittelwert", false], ["Der Median", true], ["Der Interquartilsabstand", false]],
+        why: "Die Linie ist der Median: der mittlere Wert der sortierten Reihe. Der Mittelwert wird im Boxplot nicht gezeichnet."
+      },
+      {
+        q: "Wann wird ein Punkt zum Ausreißer?",
+        choices: [["Sobald er der größte Wert ist", false], ["Wenn er jenseits von 1,5 Boxlängen außerhalb von Q1 oder Q3 liegt", true], ["Wenn er genau auf dem Median liegt", false]],
+        why: "Nach Tukey endet die Antenne beim letzten Wert innerhalb des Zauns. Weiter draußen bleibt der Punkt ein Ausreißer. Die 1,5 ist eine vereinbarte Faustregel."
+      }
+    ];
+    const root = document.getElementById("quiz");
+    questions.forEach((item) => {
+      const field = document.createElement("fieldset");
+      const legend = document.createElement("legend");
+      legend.textContent = item.q;
+      const choices = document.createElement("div");
+      choices.className = "choices";
+      const why = document.createElement("p");
+      why.className = "why";
+      why.hidden = true;
+      item.choices.forEach((choice) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = choice[0];
+        btn.addEventListener("click", () => {
+          choices.querySelectorAll("button").forEach((b) => b.classList.remove("good", "bad"));
+          btn.classList.add(choice[1] ? "good" : "bad");
+          why.hidden = false;
+          why.textContent = (choice[1] ? "Stimmt. " : "Noch nicht. ") + item.why;
+        });
+        choices.appendChild(btn);
+      });
+      field.append(legend, choices, why);
+      root.appendChild(field);
+    });
+  }
+
+  function setupClasses() {
+    const root = document.getElementById("classes");
+    const story = document.getElementById("compare-story");
+    CLASSES.forEach((klass) => {
+      const card = document.createElement("article");
+      card.className = "klass";
+      const h = document.createElement("h3");
+      h.textContent = "Klasse " + klass.name;
+      const sub = document.createElement("p");
+      sub.className = "sub";
+      sub.textContent = klass.sub;
+      const svg = document.createElementNS(SVG_NS, "svg");
+      svg.setAttribute("viewBox", "0 0 220 300");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", "Boxplot Klasse " + klass.name);
+      const stats = compute(klass.values);
+      drawPlot(svg, klass.values, {
+        geo: { w: 220, h: 300, padL: 36, padR: 18, padT: 14, padB: 24, boxX: 112, boxW: 52, pointX: 72, jitterW: 40 },
+        domain: [0, 100],
+        showFences: true,
+        showNumbers: false,
+        jitter: true,
+        labels: false,
+        compact: true,
+        selected: null,
+        hoverIndex: null
+      });
+      const line = document.createElement("p");
+      line.className = "mini-stats";
+      line.textContent = "Median " + fmt(stats.median) + " · IQR " + fmt(stats.iqr);
+      card.append(h, sub, svg, line);
+      card.addEventListener("mouseenter", () => {
+        root.querySelectorAll(".klass").forEach((n) => n.classList.remove("is-on"));
+        card.classList.add("is-on");
+        story.textContent = "Klasse " + klass.name + ": " + shapeStory(stats);
+      });
+      card.addEventListener("focusin", () => card.dispatchEvent(new Event("mouseenter")));
+      card.tabIndex = 0;
+      root.appendChild(card);
+    });
+    root.addEventListener("mouseleave", () => {
+      root.querySelectorAll(".klass").forEach((n) => n.classList.remove("is-on"));
+      story.textContent = "Zeig auf eine Klasse.";
+    });
+  }
+
+  function keysFromPart(part) {
+    const map = {
+      min: ["min", "whiskerLow"],
+      max: ["max", "whiskerHigh"],
+      whiskerLow: ["whiskerLow"],
+      whiskerHigh: ["whiskerHigh"],
+      q1: ["q1", "box"],
+      q3: ["q3", "box"],
+      median: ["median", "box"],
+      iqr: ["iqr", "box", "q1", "q3", "median"],
+      outlier: ["outlier", "fence"],
+      box: ["box", "iqr", "q1", "q3", "median"]
+    };
+    return map[part] || [part];
+  }
+
+  plot.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const p = svgPoint(event);
+    const index = pickPoint(p.x, p.y);
+    state.drag = { index, x: p.x, y: p.y, moved: false, pointer: event.pointerId };
+    if (index >= 0) {
+      const span = hit.scale.hi - hit.scale.lo;
+      state.scaleOverride = { lo: hit.scale.lo - span * 0.2, hi: hit.scale.hi + span * 0.2 };
+    }
+    event.preventDefault();
+  });
+
+  window.addEventListener("pointermove", (event) => {
+    if (!state.drag || event.pointerId !== state.drag.pointer) {
+      if (event.target === plot || plot.contains(event.target)) {
+        const p = svgPoint(event);
+        const index = pickPoint(p.x, p.y);
+        if (index >= 0) {
+          const v = state.values[index];
+          const s = compute(state.values);
+          setHover(["points", regionOf(v, s), regionOf(v, s) === "outlier" ? "outlier" : ""], index);
+          plot.style.cursor = "ns-resize";
+        } else {
+          const zone = pickZone(p.x, p.y);
+          setHover(zone, null);
+          plot.style.cursor = zone ? "pointer" : "crosshair";
+        }
+      }
+      return;
+    }
+    const p = svgPoint(event);
+    if (Math.hypot(p.x - state.drag.x, p.y - state.drag.y) > 4) state.drag.moved = true;
+    if (state.drag.index >= 0 && state.drag.moved && state.scaleOverride) {
+      state.locked = null;
+      state.hoverKeys = null;
+      state.hoverIndex = null;
+      state.hoverSig = "";
+      state.values[state.drag.index] = round1(vOf(p.y, state.scaleOverride, GEO));
+      state.preset = "custom";
+      state.selected = state.drag.index;
+      build();
+    }
+  });
+
+  window.addEventListener("pointerup", (event) => {
+    if (!state.drag || event.pointerId !== state.drag.pointer) return;
+    const drag = state.drag;
+    state.drag = null;
+    const wasOverride = state.scaleOverride;
+    state.scaleOverride = null;
+    if (drag.index >= 0 && !drag.moved) {
+      state.selected = drag.index;
+      const s = compute(state.values);
+      state.locked = ["points", regionOf(state.values[drag.index], s)];
+      state.hoverKeys = null;
+      state.hoverIndex = drag.index;
+      state.hoverSig = "";
+      build();
+      return;
+    }
+    if (drag.index < 0 && !drag.moved && hit.scale) {
+      const zone = pickZone(drag.x, drag.y);
+      if (zone) {
+        state.locked = zone;
+        state.hoverKeys = null;
+        state.hoverIndex = null;
+        state.hoverSig = "";
+        paint();
+        return;
+      }
+      const geo = GEO;
+      if (drag.y >= geo.padT && drag.y <= geo.h - geo.padB && drag.x >= geo.padL && drag.x <= geo.boxX + geo.boxW + 24) {
+        state.values.push(round1(vOf(drag.y, hit.scale, geo)));
+        state.preset = "custom";
+        state.selected = state.values.length - 1;
+        state.locked = null;
+        build();
+        return;
+      }
+    }
+    if (wasOverride) build();
+  });
+
+  plot.addEventListener("pointerleave", () => {
+    if (state.drag) return;
+    setHover(null, null);
+    plot.style.cursor = "crosshair";
+  });
+
+  plot.addEventListener("contextmenu", (event) => {
+    const p = svgPoint(event);
+    const index = pickPoint(p.x, p.y);
+    if (index >= 0) {
+      event.preventDefault();
+      removeAt(index);
+    }
+  });
+
+  chips.addEventListener("click", (event) => {
+    const btn = event.target.closest(".chip");
+    if (!btn) return;
+    state.selected = Number(btn.dataset.index);
+    state.locked = btn.dataset.keys.split(" ");
+    state.hoverKeys = null;
+    state.hoverIndex = state.selected;
+    state.hoverSig = "";
+    build();
+  });
+
+  chips.addEventListener("mouseover", (event) => {
+    const btn = event.target.closest(".chip");
+    if (!btn) return;
+    setHover(btn.dataset.keys.split(" "), Number(btn.dataset.index));
+  });
+  chips.addEventListener("mouseleave", () => setHover(null, null));
+
+  document.getElementById("stats").addEventListener("click", (event) => {
+    const btn = event.target.closest(".stat");
+    if (!btn) return;
+    const keys = keysFromPart(btn.dataset.part);
+    const sig = keys.join(",");
+    if (state.locked && state.locked.join(",") === sig) state.locked = null;
+    else state.locked = keys;
+    state.hoverKeys = null;
+    state.hoverSig = "";
+    paint();
+  });
+  document.getElementById("stats").addEventListener("mouseover", (event) => {
+    const btn = event.target.closest(".stat");
+    if (!btn || state.locked) return;
+    setHover(keysFromPart(btn.dataset.part), null);
+  });
+  document.getElementById("stats").addEventListener("mouseleave", () => {
+    if (!state.locked) setHover(null, null);
+  });
+
+  document.getElementById("opt-fence").addEventListener("change", (event) => {
+    state.showFences = event.target.checked;
+    build();
+  });
+  document.getElementById("opt-numbers").addEventListener("change", (event) => {
+    state.showNumbers = event.target.checked;
+    build();
+  });
+  document.getElementById("opt-jitter").addEventListener("change", (event) => {
+    state.jitter = event.target.checked;
+    build();
+  });
+  document.getElementById("reroll").addEventListener("click", () => {
+    const preset = PRESETS.find((p) => p.id === state.preset);
+    if (!preset || !preset.random) return;
+    state.seed += 17;
+    loadValues(sample(preset.id, state.seed), preset.id);
+  });
+  document.getElementById("apply").addEventListener("click", () => {
+    const text = document.getElementById("custom").value;
+    const matches = text.match(/-?\d+(?:[.,]\d+)?/g) || [];
+    const err = document.getElementById("parse-error");
+    if (!matches.length) {
+      err.hidden = false;
+      err.textContent = "Ich finde darin keine Zahlen.";
+      return;
+    }
+    err.hidden = true;
+    loadValues(matches.map((n) => parseFloat(n.replace(",", "."))), "custom");
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const typing = event.target.matches("textarea, input");
+    if (event.key === "Escape") {
+      state.locked = null;
+      state.tour = null;
+      state.hoverSig = "";
+      build();
+    }
+    if (!typing && (event.key === "Delete" || event.key === "Backspace") && state.selected != null) {
+      event.preventDefault();
+      removeAt(state.selected);
+    }
+    if (!typing && state.tour != null && event.key === "ArrowRight") document.getElementById("tour-next").click();
+    if (!typing && state.tour != null && event.key === "ArrowLeft") document.getElementById("tour-prev").click();
+  });
+
+  setupPresets();
+  setupTour();
+  setupQuiz();
+  setupClasses();
+  if (!selfCheck()) {
+    document.getElementById("explain-title").textContent = "Rechenprüfung fehlgeschlagen";
+  }
+  build();
+})();
+</script>
+<noscript>Diese Seite braucht JavaScript, sonst bleibt die Grafik leer.</noscript>
+</body>
+</html>
